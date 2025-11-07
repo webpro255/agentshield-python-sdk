@@ -227,6 +227,26 @@ class AgentShieldClient:
                 details=str(e)
             )
 
+    def log_call(
+        self,
+        tool_name: str,
+        tool_args: Dict[str, Any],
+        execution_time_ms: Optional[int] = None,
+        timestamp: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Alias for log_agent_call().
+
+        This method provides a cleaner API name for logging agent calls.
+        All parameters and behavior are identical to log_agent_call().
+        """
+        return self.log_agent_call(
+            tool_name=tool_name,
+            tool_args=tool_args,
+            execution_time_ms=execution_time_ms,
+            timestamp=timestamp,
+        )
+
     def close(self):
         """Close the HTTP session."""
         if self.session:
