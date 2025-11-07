@@ -212,22 +212,37 @@ class SecureAgent:
             # Extract arguments for logging
             tool_args = self._extract_args(args, kwargs)
 
+            # Extract real tool name if this is an invoke() wrapper
+            actual_tool_name = tool_name
+            actual_tool_args = tool_args
+
+            if tool_name == "invoke" and args and len(args) > 0:
+                input_dict = args[0]
+                if isinstance(input_dict, dict):
+                    # Extract real tool name if present
+                    if 'tool' in input_dict:
+                        actual_tool_name = input_dict['tool']
+
+                    # Extract tool args if present
+                    if 'args' in input_dict:
+                        actual_tool_args = self._serialize_value(input_dict['args'])
+
             # STEP 1: Call AgentShield API BEFORE executing tool
             start_time = time.time()
 
             try:
                 # Call AgentShield for policy evaluation
                 response = self.client.log_call(
-                    tool_name=tool_name,
-                    tool_args=tool_args,
+                    tool_name=actual_tool_name,
+                    tool_args=actual_tool_args,
                 )
 
                 # STEP 2: Extract status (fail closed if missing)
                 status = response.get("status")
                 if not status:
-                    logger.error(f"No status in API response for {tool_name}")
+                    logger.error(f"No status in API response for {actual_tool_name}")
                     raise SecurityException(
-                        message=f"Policy check failed: no status returned for '{tool_name}'",
+                        message=f"Policy check failed: no status returned for '{actual_tool_name}'",
                         policy_matched=None,
                         call_id=response.get("call_id"),
                         status="ERROR",
@@ -238,7 +253,7 @@ class SecureAgent:
                 message = response.get("message", "")
 
                 logger.debug(
-                    f"Policy check: tool={tool_name}, status={status}, "
+                    f"Policy check: tool={actual_tool_name}, status={status}, "
                     f"call_id={call_id}"
                 )
 
@@ -247,10 +262,10 @@ class SecureAgent:
                 # BLOCKED - raise exception, DO NOT execute tool
                 if status == "BLOCKED":
                     logger.warning(
-                        f"BLOCKED: Tool '{tool_name}' blocked by policy | {message}"
+                        f"BLOCKED: Tool '{actual_tool_name}' blocked by policy | {message}"
                     )
                     raise SecurityException(
-                        message=message or f"Tool '{tool_name}' blocked by security policy",
+                        message=message or f"Tool '{actual_tool_name}' blocked by security policy",
                         policy_matched=policy_matched,
                         call_id=call_id,
                         status=status,
@@ -259,10 +274,10 @@ class SecureAgent:
                 # PENDING_APPROVAL - raise exception, DO NOT execute tool
                 elif status == "PENDING_APPROVAL":
                     logger.info(
-                        f"PENDING: Tool '{tool_name}' requires approval | {message}"
+                        f"PENDING: Tool '{actual_tool_name}' requires approval | {message}"
                     )
                     raise SecurityException(
-                        message=message or f"Tool '{tool_name}' requires manual approval",
+                        message=message or f"Tool '{actual_tool_name}' requires manual approval",
                         policy_matched=policy_matched,
                         call_id=call_id,
                         status=status,
@@ -271,54 +286,54 @@ class SecureAgent:
                 # FLAGGED - log warning, but ALLOW execution
                 elif status == "FLAGGED":
                     logger.warning(
-                        f"FLAGGED: Tool '{tool_name}' flagged for review | {message}"
+                        f"FLAGGED: Tool '{actual_tool_name}' flagged for review | {message}"
                     )
                     # Continue to execution
 
                 # ALLOWED - proceed with execution
                 elif status == "ALLOWED":
-                    logger.debug(f"ALLOWED: Tool '{tool_name}' approved for execution")
+                    logger.debug(f"ALLOWED: Tool '{actual_tool_name}' approved for execution")
                     # Continue to execution
 
                 # Unknown status - fail closed
                 else:
-                    logger.error(f"Unknown status '{status}' for {tool_name}")
+                    logger.error(f"Unknown status '{status}' for {actual_tool_name}")
                     raise SecurityException(
-                        message=f"Unknown policy status '{status}' for tool '{tool_name}'",
+                        message=f"Unknown policy status '{status}' for tool '{actual_tool_name}'",
                         policy_matched=policy_matched,
                         call_id=call_id,
                         status=status,
                     )
 
                 # STEP 4: Execute the tool (only if ALLOWED or FLAGGED)
-                logger.debug(f"Executing tool: {tool_name}")
+                logger.debug(f"Executing tool: {actual_tool_name}")
                 result = func(*args, **kwargs)
 
                 # Log execution time
                 execution_time_ms = int((time.time() - start_time) * 1000)
                 logger.debug(
-                    f"Tool executed successfully: {tool_name} | {execution_time_ms}ms"
+                    f"Tool executed successfully: {actual_tool_name} | {execution_time_ms}ms"
                 )
 
                 return result
 
             except SecurityException:
                 # Re-raise security exceptions immediately - do NOT execute tool
-                logger.debug(f"Tool NOT executed due to security policy: {tool_name}")
+                logger.debug(f"Tool NOT executed due to security policy: {actual_tool_name}")
                 raise
 
             except Exception as e:
                 # Handle network/API errors based on fail_open setting
-                logger.error(f"AgentShield API error for {tool_name}: {str(e)}")
+                logger.error(f"AgentShield API error for {actual_tool_name}: {str(e)}")
 
                 if self.fail_open:
                     logger.warning(
-                        f"Fail-open mode: executing {tool_name} despite API error"
+                        f"Fail-open mode: executing {actual_tool_name} despite API error"
                     )
                     return func(*args, **kwargs)
                 else:
                     # Fail closed - block execution
-                    logger.error(f"Fail-closed mode: blocking {tool_name} due to API error")
+                    logger.error(f"Fail-closed mode: blocking {actual_tool_name} due to API error")
                     raise SecurityException(
                         message=f"Cannot verify security policy due to API error: {str(e)}",
                         policy_matched=None,
@@ -348,22 +363,37 @@ class SecureAgent:
             # Extract arguments for logging
             tool_args = self._extract_args(args, kwargs)
 
+            # Extract real tool name if this is an invoke() wrapper
+            actual_tool_name = tool_name
+            actual_tool_args = tool_args
+
+            if tool_name == "invoke" and args and len(args) > 0:
+                input_dict = args[0]
+                if isinstance(input_dict, dict):
+                    # Extract real tool name if present
+                    if 'tool' in input_dict:
+                        actual_tool_name = input_dict['tool']
+
+                    # Extract tool args if present
+                    if 'args' in input_dict:
+                        actual_tool_args = self._serialize_value(input_dict['args'])
+
             # STEP 1: Call AgentShield API BEFORE executing tool
             start_time = time.time()
 
             try:
                 # Call AgentShield for policy evaluation (sync call in async context)
                 response = self.client.log_call(
-                    tool_name=tool_name,
-                    tool_args=tool_args,
+                    tool_name=actual_tool_name,
+                    tool_args=actual_tool_args,
                 )
 
                 # STEP 2: Extract status (fail closed if missing)
                 status = response.get("status")
                 if not status:
-                    logger.error(f"No status in API response for {tool_name}")
+                    logger.error(f"No status in API response for {actual_tool_name}")
                     raise SecurityException(
-                        message=f"Policy check failed: no status returned for '{tool_name}'",
+                        message=f"Policy check failed: no status returned for '{actual_tool_name}'",
                         policy_matched=None,
                         call_id=response.get("call_id"),
                         status="ERROR",
@@ -374,7 +404,7 @@ class SecureAgent:
                 message = response.get("message", "")
 
                 logger.debug(
-                    f"Policy check (async): tool={tool_name}, status={status}, "
+                    f"Policy check (async): tool={actual_tool_name}, status={status}, "
                     f"call_id={call_id}"
                 )
 
@@ -383,10 +413,10 @@ class SecureAgent:
                 # BLOCKED - raise exception, DO NOT execute tool
                 if status == "BLOCKED":
                     logger.warning(
-                        f"BLOCKED: Tool '{tool_name}' blocked by policy | {message}"
+                        f"BLOCKED: Tool '{actual_tool_name}' blocked by policy | {message}"
                     )
                     raise SecurityException(
-                        message=message or f"Tool '{tool_name}' blocked by security policy",
+                        message=message or f"Tool '{actual_tool_name}' blocked by security policy",
                         policy_matched=policy_matched,
                         call_id=call_id,
                         status=status,
@@ -395,10 +425,10 @@ class SecureAgent:
                 # PENDING_APPROVAL - raise exception, DO NOT execute tool
                 elif status == "PENDING_APPROVAL":
                     logger.info(
-                        f"PENDING: Tool '{tool_name}' requires approval | {message}"
+                        f"PENDING: Tool '{actual_tool_name}' requires approval | {message}"
                     )
                     raise SecurityException(
-                        message=message or f"Tool '{tool_name}' requires manual approval",
+                        message=message or f"Tool '{actual_tool_name}' requires manual approval",
                         policy_matched=policy_matched,
                         call_id=call_id,
                         status=status,
@@ -407,54 +437,54 @@ class SecureAgent:
                 # FLAGGED - log warning, but ALLOW execution
                 elif status == "FLAGGED":
                     logger.warning(
-                        f"FLAGGED: Tool '{tool_name}' flagged for review | {message}"
+                        f"FLAGGED: Tool '{actual_tool_name}' flagged for review | {message}"
                     )
                     # Continue to execution
 
                 # ALLOWED - proceed with execution
                 elif status == "ALLOWED":
-                    logger.debug(f"ALLOWED: Tool '{tool_name}' approved for execution")
+                    logger.debug(f"ALLOWED: Tool '{actual_tool_name}' approved for execution")
                     # Continue to execution
 
                 # Unknown status - fail closed
                 else:
-                    logger.error(f"Unknown status '{status}' for {tool_name}")
+                    logger.error(f"Unknown status '{status}' for {actual_tool_name}")
                     raise SecurityException(
-                        message=f"Unknown policy status '{status}' for tool '{tool_name}'",
+                        message=f"Unknown policy status '{status}' for tool '{actual_tool_name}'",
                         policy_matched=policy_matched,
                         call_id=call_id,
                         status=status,
                     )
 
                 # STEP 4: Execute the tool (only if ALLOWED or FLAGGED)
-                logger.debug(f"Executing tool (async): {tool_name}")
+                logger.debug(f"Executing tool (async): {actual_tool_name}")
                 result = await func(*args, **kwargs)
 
                 # Log execution time
                 execution_time_ms = int((time.time() - start_time) * 1000)
                 logger.debug(
-                    f"Tool executed successfully (async): {tool_name} | {execution_time_ms}ms"
+                    f"Tool executed successfully (async): {actual_tool_name} | {execution_time_ms}ms"
                 )
 
                 return result
 
             except SecurityException:
                 # Re-raise security exceptions immediately - do NOT execute tool
-                logger.debug(f"Tool NOT executed due to security policy: {tool_name}")
+                logger.debug(f"Tool NOT executed due to security policy: {actual_tool_name}")
                 raise
 
             except Exception as e:
                 # Handle network/API errors based on fail_open setting
-                logger.error(f"AgentShield API error for {tool_name}: {str(e)}")
+                logger.error(f"AgentShield API error for {actual_tool_name}: {str(e)}")
 
                 if self.fail_open:
                     logger.warning(
-                        f"Fail-open mode: executing {tool_name} despite API error"
+                        f"Fail-open mode: executing {actual_tool_name} despite API error"
                     )
                     return await func(*args, **kwargs)
                 else:
                     # Fail closed - block execution
-                    logger.error(f"Fail-closed mode: blocking {tool_name} due to API error")
+                    logger.error(f"Fail-closed mode: blocking {actual_tool_name} due to API error")
                     raise SecurityException(
                         message=f"Cannot verify security policy due to API error: {str(e)}",
                         policy_matched=None,
