@@ -423,7 +423,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🙋 Support
 
-- **Email**: support@agent-shield.com
+- **Email**: David@agent-shield.com
 - **GitHub Issues**: [github.com/agentshield/python-sdk/issues](https://github.com/agentshield/python-sdk/issues)
 - **Documentation**: [agent-shield.com/docs](https://agent-shield.com/docs)
 - **Discord**: [discord.gg/agentshield](https://discord.gg/agentshield)
