@@ -432,4 +432,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-*Co-authored-by: schen-analytics <msobb.secresearch@outlook.com>* **Made with ❤️ by the AgentShield team**
+**Made with ❤️ by the AgentShield team**
