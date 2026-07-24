@@ -428,8 +428,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 - **Documentation**: [agent-shield.com/docs](https://agent-shield.com/docs)
 - **Discord**: [discord.gg/agentshield](https://discord.gg/agentshield)
 
-  Co-authored-by: schen-analytics <msobb.secresearch@outlook.com>
+  
 
 ---
 
-**Made with ❤️ by the AgentShield team**
+*Co-authored-by: schen-analytics <msobb.secresearch@outlook.com>* **Made with ❤️ by the AgentShield team**
